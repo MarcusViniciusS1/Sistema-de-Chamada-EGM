@@ -21,6 +21,7 @@ export function Layout() {
             <li className="nav-item"><Link className="nav-link text-white" to="/onibus"><Bus size={18} className="me-1"/> Ônibus</Link></li>
             <li className="nav-item"><Link className="nav-link text-white" to="/portaria"><DoorOpen size={18} className="me-1"/> Portaria</Link></li>
             <li className="nav-item"><Link className="nav-link text-white" to="/refeitorio"><Utensils size={18} className="me-1"/> Refeitório</Link></li>
+            <li className="nav-item"><Link className="nav-link text-white" to="/CadastroMonitora"><Users size={18} className="me-1"/> Cadastro</Link></li>
 
             {/* Botão Sair */}
             <li className="nav-item ms-3">

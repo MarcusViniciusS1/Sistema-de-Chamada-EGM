@@ -5,10 +5,9 @@ import { Dashboard } from './pages/Dashboard';
 import { CadastroAluno } from './pages/CadastroAluno';
 import { CadastroOnibus } from './pages/CadastroOnibus';
 import { Portaria } from './pages/Portaria';
- 
-
-// Componentes "Placeholder" simples para as rotas que ainda não criamos
-const Refeitorio = () => <h2 className="text-center mt-5">Sistema do Refeitório (Em construção)</h2>;
+import { CadastroMonitora } from './pages/CadastroMonitora'; 
+import { Refeitorio } from './pages/Refeitorio';
+import { Monitora } from './pages/Monitora';
 
 function App() {
   return (
@@ -23,6 +22,8 @@ function App() {
         <Route path="/onibus" element={<CadastroOnibus />} />
         <Route path="/portaria" element={<Portaria />} />
         <Route path="/refeitorio" element={<Refeitorio />} />
+        <Route path="/CadastroMonitora" element={<CadastroMonitora />} />
+        <Route path="/monitora" element={<Monitora />} />
 
       </Route>
     </Routes>
