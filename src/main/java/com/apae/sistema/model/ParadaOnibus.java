@@ -13,5 +13,7 @@ public class ParadaOnibus {
 
     private String nomeParada;
     private String endereco;
-    // Outros campos se necessário (latitude, longitude, onibus_id)
+    private String latitude;
+    private String longitude;
+    private Integer ordemParada;
 }
