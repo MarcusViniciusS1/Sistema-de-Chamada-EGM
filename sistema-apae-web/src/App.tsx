@@ -4,9 +4,10 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { CadastroAluno } from './pages/CadastroAluno';
 import { CadastroOnibus } from './pages/CadastroOnibus';
+import { Portaria } from './pages/Portaria';
+ 
 
 // Componentes "Placeholder" simples para as rotas que ainda não criamos
-const Portaria = () => <h2 className="text-center mt-5">Sistema da Portaria (Em construção)</h2>;
 const Refeitorio = () => <h2 className="text-center mt-5">Sistema do Refeitório (Em construção)</h2>;
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         <Route path="/onibus" element={<CadastroOnibus />} />
         <Route path="/portaria" element={<Portaria />} />
         <Route path="/refeitorio" element={<Refeitorio />} />
+
       </Route>
     </Routes>
   );

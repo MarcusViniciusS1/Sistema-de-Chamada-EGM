@@ -25,20 +25,13 @@ public class DashboardController {
     public DashboardDTO getResumo() {
         LocalDate hoje = LocalDate.now();
 
-        // 1. Busca o total de alunos cadastrados no sistema
         long totalAlunos = alunoRepository.count();
-
-        // 2. Conta quantos já embarcaram HOJE
         long embarcaram = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.EMBARCOU);
-
-        // 3. Conta quantos faltaram HOJE
         long faltaram = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.FALTA);
-
-        // 4. Calcula quem está aguardando (Total - (Embarcou + Faltou))
-        // Obs: Se tiver o status 'PRESENTE_PORTARIA', deve somar ele na subtração também.
-        long processados = embarcaram + faltaram;
+        long presentesPortaria = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.PRESENTE_PORTARIA);
+        long processados = embarcaram + faltaram + presentesPortaria;
         long aguardando = (totalAlunos > processados) ? (totalAlunos - processados) : 0;
 
-        return new DashboardDTO(totalAlunos, embarcaram, faltaram, aguardando);
+        return new DashboardDTO(totalAlunos, embarcaram, faltaram, aguardando, presentesPortaria);
     }
 }
