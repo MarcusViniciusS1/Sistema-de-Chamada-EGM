@@ -21,7 +21,24 @@ public class OnibusController {
 
     @PostMapping
     public ResponseEntity<Onibus> criarOnibus(@RequestBody Onibus onibus) {
-        Onibus novo = repository.save(onibus);
-        return ResponseEntity.ok(novo);
+        return ResponseEntity.ok(repository.save(onibus));
+    }
+
+    // --- NOVOS MÉTODOS ---
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Onibus> atualizarOnibus(@PathVariable Long id, @RequestBody Onibus onibus) {
+        if (!repository.existsById(id)) return ResponseEntity.notFound().build();
+        onibus.setId(id); // Garante que atualiza o ID correto
+        return ResponseEntity.ok(repository.save(onibus));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarOnibus(@PathVariable Long id) {
+        if (repository.existsById(id)) {
+            repository.deleteById(id);
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 }
