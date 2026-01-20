@@ -1,35 +1,30 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route } from 'react-router-dom';
+import { Login } from './pages/Login';
+import { Layout } from './components/Layout';
+import { Dashboard } from './pages/Dashboard';
+import { CadastroAluno } from './pages/CadastroAluno';
+import { CadastroOnibus } from './pages/CadastroOnibus';
+
+// Componentes "Placeholder" simples para as rotas que ainda não criamos
+const Portaria = () => <h2 className="text-center mt-5">Sistema da Portaria (Em construção)</h2>;
+const Refeitorio = () => <h2 className="text-center mt-5">Sistema do Refeitório (Em construção)</h2>;
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Routes>
+      {/* Rota Pública (Login fica fora do layout padrão) */}
+      <Route path="/" element={<Login />} />
+
+      {/* Rotas Protegidas (Ficam DENTRO do Layout com menu azul) */}
+      <Route element={<Layout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/alunos" element={<CadastroAluno />} />
+        <Route path="/onibus" element={<CadastroOnibus />} />
+        <Route path="/portaria" element={<Portaria />} />
+        <Route path="/refeitorio" element={<Refeitorio />} />
+      </Route>
+    </Routes>
+  );
 }
 
-export default App
+export default App;
