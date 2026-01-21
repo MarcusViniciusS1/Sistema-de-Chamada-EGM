@@ -1,5 +1,112 @@
+/* Importando fonte Inter para um visual mais moderno (opcional, mas recomendado) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+:root {
+  /* PALETA DE CORES DARK (Slate Theme) */
+  --bg-body: #0f172a;      /* Fundo Principal (Bem escuro) */
+  --bg-surface: #1e293b;   /* Fundo dos Cards/Menus (Cinza azulado) */
+  --bg-input: #334155;     /* Fundo de inputs */
+  
+  --text-main: #f1f5f9;    /* Texto Principal (Quase branco) */
+  --text-muted: #94a3b8;   /* Texto Secundário (Cinza claro) */
+  
+  --border-color: #334155; /* Cor das bordas */
+  
+  --primary-color: #3b82f6; /* Azul vibrante */
+  --danger-color: #ef4444;  /* Vermelho suave */
+  --success-color: #10b981; /* Verde esmeralda */
+  --warning-color: #f59e0b; /* Laranja */
+}
+
 body {
-  background-color: #f3f4f6;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-body) !important;
+  color: var(--text-main) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- SOBRESREVENDO BOOTSTRAP PARA DARK MODE --- */
+
+/* Textos */
+.text-dark { color: var(--text-main) !important; }
+.text-secondary { color: var(--text-muted) !important; }
+.text-muted { color: var(--text-muted) !important; }
+
+/* Fundos */
+.bg-light {
+  background-color: var(--bg-body) !important;
+}
+.bg-white {
+  background-color: var(--bg-surface) !important;
+}
+
+/* Cards */
+.card {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+/* Tabelas */
+.table {
+  --bs-table-color: var(--text-main);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--border-color);
+  --bs-table-hover-bg: #334155;
+  --bs-table-hover-color: var(--text-main);
+}
+.table-light {
+  background-color: #1e293b;
+  color: #fff;
+}
+.table thead th {
+  background-color: #0f172a !important;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* Formulários (Inputs) */
+.form-control, .form-select {
+  background-color: var(--bg-input) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+.form-control:focus, .form-select:focus {
+  background-color: #475569 !important;
+  color: #fff !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+}
+::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+
+/* Botões (Melhorando contraste) */
+.btn-outline-secondary {
+  color: #cbd5e1;
+  border-color: #64748b;
+}
+.btn-outline-secondary:hover {
+  background-color: #475569;
+  border-color: #475569;
+}
+
+/* Modais */
+.modal-content {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+}
+.modal-header, .modal-footer {
+  border-color: var(--border-color);
+}
+.btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Badges */
+.badge.bg-light {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
 }
