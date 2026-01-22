@@ -1,6 +1,5 @@
 package com.apae.sistema.controller;
 
-import com.apae.sistema.dto.DashboardDTO;
 import com.apae.sistema.model.StatusChamada;
 import com.apae.sistema.repository.AlunoRepository;
 import com.apae.sistema.repository.ChamadaRepository;
@@ -16,22 +15,34 @@ import java.time.LocalDate;
 public class DashboardController {
 
     @Autowired
-    private AlunoRepository alunoRepository;
-
-    @Autowired
     private ChamadaRepository chamadaRepository;
 
+    @Autowired
+    private AlunoRepository alunoRepository;
+
+    public record ResumoDashboardDTO(
+            long totalAlunos,
+            long embarcaram,
+            long presentesPortaria,
+            long faltaram,
+            long aguardando
+    ) {}
+
     @GetMapping("/resumo")
-    public DashboardDTO getResumo() {
+    public ResumoDashboardDTO getResumo() {
         LocalDate hoje = LocalDate.now();
 
         long totalAlunos = alunoRepository.count();
-        long embarcaram = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.EMBARCOU);
-        long faltaram = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.FALTA);
-        long presentesPortaria = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.PRESENTE_PORTARIA);
-        long processados = embarcaram + faltaram + presentesPortaria;
-        long aguardando = (totalAlunos > processados) ? (totalAlunos - processados) : 0;
 
-        return new DashboardDTO(totalAlunos, embarcaram, faltaram, aguardando, presentesPortaria);
+        // CORREÇÃO: Usando os nomes novos do Enum
+        long embarcaram = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.EMBARCOU);
+        long presentesPortaria = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.PRESENTE); // <-- Mudado aqui
+        long faltaram = chamadaRepository.countByDataChamadaAndStatus(hoje, StatusChamada.FALTA);
+
+        // Quem não tem chamada registrada ainda está "Aguardando"
+        long processados = embarcaram + presentesPortaria + faltaram;
+        long aguardando = (totalAlunos > processados) ? totalAlunos - processados : 0;
+
+        return new ResumoDashboardDTO(totalAlunos, embarcaram, presentesPortaria, faltaram, aguardando);
     }
 }
