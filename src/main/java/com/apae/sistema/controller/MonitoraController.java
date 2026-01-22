@@ -1,69 +1,72 @@
 package com.apae.sistema.controller;
 
-import com.apae.sistema.dto.MonitoraDTO;
-import com.apae.sistema.model.Monitora;
-import com.apae.sistema.model.Usuario;
-import com.apae.sistema.repository.MonitoraRepository;
-import com.apae.sistema.repository.UsuarioRepository;
+import com.apae.sistema.model.*;
+import com.apae.sistema.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/monitoras")
+@RequestMapping("/api/monitora")
 public class MonitoraController {
 
     @Autowired
-    private MonitoraRepository monitoraRepository;
+    private UsuarioRepository usuarioRepository;
 
     @Autowired
-    private UsuarioRepository usuarioRepository; // Para verificar duplicidade de login
+    private OnibusRepository onibusRepository;
 
-    // Listar todas convertendo para DTO
-    @GetMapping
-    public List<MonitoraDTO> listar() {
-        return monitoraRepository.findAll().stream().map(m -> new MonitoraDTO(
-                m.getId(), m.getNome(), m.getTelefone(), m.getEndereco(), m.getCpf(),
-                m.getUsuario().getUsername(), "******" // Não devolvemos a senha por segurança
-        )).collect(Collectors.toList());
-    }
+    @Autowired
+    private ParadaRepository paradaRepository;
 
-    // Criar Nova Monitora + Usuário
-    @PostMapping
-    @Transactional
-    public ResponseEntity<?> criar(@RequestBody MonitoraDTO dados) {
-        // Verifica se o usuário já existe
-        /*if (usuarioRepository.findByUsername(dados.username()).isPresent()) {
-            return ResponseEntity.badRequest().body("Usuário de login já existe!");
-        }*/
-        // Nota: Se não tiver o método findByUsername no UsuarioRepository, pule a verificação ou adicione lá.
+    @Autowired
+    private AlunoRepository alunoRepository;
 
-        // 1. Cria o Usuário de Acesso
-        Usuario novoUsuario = new Usuario();
-        novoUsuario.setUsername(dados.username());
-        novoUsuario.setSenha(dados.senha());
-        novoUsuario.setPerfil("MONITORA"); // Perfil fixo
+    record DadosRotaDTO(
+            Long onibusId,
+            String nomeOnibus,
+            String placa,
+            List<ParadaComAlunosDTO> paradas
+    ) {}
 
-        // 2. Cria a Monitora vinculada
-        Monitora novaMonitora = new Monitora();
-        novaMonitora.setNome(dados.nome());
-        novaMonitora.setTelefone(dados.telefone());
-        novaMonitora.setEndereco(dados.endereco());
-        novaMonitora.setCpf(dados.cpf());
-        novaMonitora.setUsuario(novoUsuario); // Vincula
+    record ParadaComAlunosDTO(
+            Long id,
+            String nomeParada,
+            String endereco,
+            List<Aluno> alunosEsperados
+    ) {}
 
-        monitoraRepository.save(novaMonitora);
-        return ResponseEntity.ok("Monitora cadastrada com sucesso!");
-    }
+    @GetMapping("/rota-atual/{usuarioId}")
+    public DadosRotaDTO getRotaAtual(@PathVariable Long usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-    // Deletar (Apaga o usuário junto)
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        monitoraRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        Onibus onibus = usuario.getOnibus();
+
+        // LÓGICA DE PROTEÇÃO DO ADMIN
+        // Se não tiver ônibus vinculado, mas for ADMIN, pegamos o primeiro ônibus do banco para testar
+        if (onibus == null) {
+            if (usuario.getPerfil().equals("ADMIN")) {
+                List<Onibus> frota = onibusRepository.findAll();
+                if (!frota.isEmpty()) {
+                    onibus = frota.get(0); // Pega o primeiro da lista
+                } else {
+                    throw new RuntimeException("Nenhum ônibus cadastrado no sistema!");
+                }
+            } else {
+                throw new RuntimeException("Monitora não vinculada a nenhum ônibus!");
+            }
+        }
+
+        // Busca paradas do ônibus usando o método corrigido (com underline)
+        List<ParadaOnibus> paradas = paradaRepository.findByOnibus_Id(onibus.getId());
+
+        List<ParadaComAlunosDTO> listaParadas = paradas.stream().map(parada -> {
+            List<Aluno> alunos = alunoRepository.findByParadaId(parada.getId());
+            return new ParadaComAlunosDTO(parada.getId(), parada.getNomeParada(), parada.getEndereco(), alunos);
+        }).toList();
+
+        return new DadosRotaDTO(onibus.getId(), onibus.getNomeOnibus(), onibus.getPlaca(), listaParadas);
     }
 }

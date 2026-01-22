@@ -5,6 +5,7 @@ import com.apae.sistema.repository.OnibusRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -12,31 +13,51 @@ import java.util.List;
 public class OnibusController {
 
     @Autowired
-    private OnibusRepository repository;
+    private OnibusRepository onibusRepository;
 
+    // 1. LISTAR TODOS
     @GetMapping
-    public List<Onibus> listarTodos() {
-        return repository.findAll();
+    public List<Onibus> listar() {
+        return onibusRepository.findAll();
     }
 
+    // 2. BUSCAR POR ID (Para edição)
+    @GetMapping("/{id}")
+    public ResponseEntity<Onibus> buscarPorId(@PathVariable Long id) {
+        return onibusRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // 3. CRIAR NOVO
     @PostMapping
-    public ResponseEntity<Onibus> criarOnibus(@RequestBody Onibus onibus) {
-        return ResponseEntity.ok(repository.save(onibus));
+    public Onibus criar(@RequestBody Onibus onibus) {
+        return onibusRepository.save(onibus);
     }
 
-    // --- NOVOS MÉTODOS ---
-
+    // 4. EDITAR (Atualizar)
     @PutMapping("/{id}")
-    public ResponseEntity<Onibus> atualizarOnibus(@PathVariable Long id, @RequestBody Onibus onibus) {
-        if (!repository.existsById(id)) return ResponseEntity.notFound().build();
-        onibus.setId(id); // Garante que atualiza o ID correto
-        return ResponseEntity.ok(repository.save(onibus));
+    public ResponseEntity<Onibus> editar(@PathVariable Long id, @RequestBody Onibus dadosNovos) {
+        return onibusRepository.findById(id)
+                .map(onibus -> {
+                    onibus.setNomeOnibus(dadosNovos.getNomeOnibus());
+                    onibus.setPlaca(dadosNovos.getPlaca());
+                    onibus.setCor(dadosNovos.getCor());
+                    onibus.setNomeMotorista(dadosNovos.getNomeMotorista());
+                    onibus.setCapacidadeMaxima(dadosNovos.getCapacidadeMaxima());
+                    onibus.setSuportaDeficiente(dadosNovos.getSuportaDeficiente());
+
+                    Onibus atualizado = onibusRepository.save(onibus);
+                    return ResponseEntity.ok(atualizado);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
+    // 5. APAGAR
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletarOnibus(@PathVariable Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
+    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+        if (onibusRepository.existsById(id)) {
+            onibusRepository.deleteById(id);
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
