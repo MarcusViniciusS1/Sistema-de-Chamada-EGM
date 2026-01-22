@@ -23,6 +23,7 @@ public class MonitoraController {
     @Autowired
     private AlunoRepository alunoRepository;
 
+    // DTOs
     record DadosRotaDTO(
             Long onibusId,
             String nomeOnibus,
@@ -37,6 +38,7 @@ public class MonitoraController {
             List<Aluno> alunosEsperados
     ) {}
 
+    // ROTA 1: Para a Monitora (Pega pelo ID do Usuário Logado)
     @GetMapping("/rota-atual/{usuarioId}")
     public DadosRotaDTO getRotaAtual(@PathVariable Long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -44,22 +46,24 @@ public class MonitoraController {
 
         Onibus onibus = usuario.getOnibus();
 
-        // LÓGICA DE PROTEÇÃO DO ADMIN
-        // Se não tiver ônibus vinculado, mas for ADMIN, pegamos o primeiro ônibus do banco para testar
         if (onibus == null) {
-            if (usuario.getPerfil().equals("ADMIN")) {
-                List<Onibus> frota = onibusRepository.findAll();
-                if (!frota.isEmpty()) {
-                    onibus = frota.get(0); // Pega o primeiro da lista
-                } else {
-                    throw new RuntimeException("Nenhum ônibus cadastrado no sistema!");
-                }
-            } else {
-                throw new RuntimeException("Monitora não vinculada a nenhum ônibus!");
-            }
+            throw new RuntimeException("Usuário sem ônibus vinculado.");
         }
 
-        // Busca paradas do ônibus usando o método corrigido (com underline)
+        return montarDadosRota(onibus);
+    }
+
+    // ROTA 2 (NOVA): Para o Admin (Pega pelo ID do Ônibus direto)
+    @GetMapping("/rota-por-onibus/{onibusId}")
+    public DadosRotaDTO getRotaPorOnibus(@PathVariable Long onibusId) {
+        Onibus onibus = onibusRepository.findById(onibusId)
+                .orElseThrow(() -> new RuntimeException("Ônibus não encontrado"));
+
+        return montarDadosRota(onibus);
+    }
+
+    // Método auxiliar para evitar repetição de código
+    private DadosRotaDTO montarDadosRota(Onibus onibus) {
         List<ParadaOnibus> paradas = paradaRepository.findByOnibus_Id(onibus.getId());
 
         List<ParadaComAlunosDTO> listaParadas = paradas.stream().map(parada -> {
