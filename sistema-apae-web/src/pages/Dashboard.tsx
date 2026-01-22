@@ -1,199 +1,131 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Users, CheckCircle, XCircle, Bus, MapPin, User } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Bus } from 'lucide-react';
 
-interface Onibus {
-  id: number;
-  nomeOnibus: string;
-  placa: string;
-  nomeMotorista: string;
-  capacidadeMaxima: number;
+interface StatusOnibus {
+    onibusId: number;
+    concluida: boolean;
 }
 
-interface Aluno {
-  id: number;
-  statusHoje?: string; // Vamos assumir que o backend pode mandar isso futuramente
+interface Onibus {
+    id: number;
+    nomeOnibus: string;
+    placa: string;
 }
 
 export function Dashboard() {
   const [frota, setFrota] = useState<Onibus[]>([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    embarcaram: 0,
-    faltaram: 0,
-    aguardando: 0
-  });
-  const [loading, setLoading] = useState(true);
+  const [statusFrota, setStatusFrota] = useState<StatusOnibus[]>([]);
+  const [stats, setStats] = useState({ total: 0, embarcaram: 0, faltaram: 0, aguardando: 0 });
 
   useEffect(() => {
     carregarDados();
+    const intervalo = setInterval(carregarDados, 10000); // Atualiza a cada 10s
+    return () => clearInterval(intervalo);
   }, []);
 
   async function carregarDados() {
     try {
-      const [resOnibus, resAlunos] = await Promise.all([
-        axios.get('http://localhost:8080/api/onibus').catch(() => ({ data: [] })),
-        axios.get('http://localhost:8080/api/alunos').catch(() => ({ data: [] }))
+      const [resOnibus, resStatus, resResumo] = await Promise.all([
+        axios.get('http://localhost:8080/api/onibus'),
+        axios.get('http://localhost:8080/api/monitora/status-frota'),
+        axios.get('http://localhost:8080/api/dashboard/resumo')
       ]);
 
-      const onibus: Onibus[] = resOnibus.data || [];
-      const alunos: Aluno[] = resAlunos.data || [];
-
-      setFrota(onibus);
-
-      // Calculando Estatísticas (Simulação baseada nos dados)
-      // Futuramente isso virá da tabela de 'chamada'
-      const total = alunos.length;
-      const embarcaram = 0; // Por enquanto 0, pois precisamos integrar com a chamada do dia
-      const faltaram = 0;
-      const aguardando = total - embarcaram - faltaram;
-
-      setStats({ total, embarcaram, faltaram, aguardando });
-
-    } catch (error) {
-      console.error("Erro ao carregar dashboard", error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) {
-    return <div className="p-5 text-center text-white">Carregando painel...</div>;
+      setFrota(resOnibus.data);
+      setStatusFrota(resStatus.data);
+      
+      if(resResumo.data) {
+        setStats({
+            total: resResumo.data.totalAlunos,
+            embarcaram: resResumo.data.embarcaram,
+            faltaram: resResumo.data.faltaram,
+            aguardando: resResumo.data.aguardando
+        });
+      }
+    } catch (e) { console.error("Erro dashboard", e); }
   }
 
   return (
     <div className="container-fluid" style={{ maxWidth: '1200px' }}>
       
       <div className="mb-4">
-        <h3 className="fw-bold text-white mb-1">Dashboard - Sistema de Embarque APAE</h3>
-        <p className="text-muted small">Acompanhamento em tempo real do transporte escolar</p>
+        <h3 className="fw-bold text-white mb-1">Dashboard</h3>
+        <p className="text-muted small">Monitoramento em tempo real</p>
       </div>
 
-      {/* 1. CARDS DE STATUS (TOPO) */}
+      {/* CARDS TOPO */}
       <div className="row g-3 mb-4">
-        
-        {/* Total */}
         <div className="col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
-            <div className="card-body d-flex justify-content-between align-items-center">
-              <div>
-                <p className="text-muted mb-0 fw-bold small">Total de Alunos</p>
-                <h2 className="fw-bold text-white mb-0">{stats.total}</h2>
-              </div>
-              <div className="p-3 rounded bg-primary bg-opacity-10 text-primary">
-                <Users size={28} />
-              </div>
+            <div className="card bg-dark border-0 shadow-sm p-3 text-white">
+                <div className="d-flex justify-content-between">
+                    <div><h2 className="mb-0">{stats.total}</h2><small className="text-muted">Total Alunos</small></div>
+                    <Users className="text-primary" size={28}/>
+                </div>
             </div>
-          </div>
         </div>
-
-        {/* Embarcaram */}
         <div className="col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
-            <div className="card-body d-flex justify-content-between align-items-center">
-              <div>
-                <p className="text-muted mb-0 fw-bold small">Embarcaram</p>
-                <h2 className="fw-bold text-success mb-0">{stats.embarcaram}</h2>
-              </div>
-              <div className="p-3 rounded bg-success bg-opacity-10 text-success">
-                <CheckCircle size={28} />
-              </div>
+            <div className="card bg-dark border-0 shadow-sm p-3 text-white">
+                <div className="d-flex justify-content-between">
+                    <div><h2 className="mb-0 text-success">{stats.embarcaram}</h2><small className="text-muted">Embarcaram</small></div>
+                    <CheckCircle className="text-success" size={28}/>
+                </div>
             </div>
-          </div>
         </div>
-
-        {/* Faltaram */}
         <div className="col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
-            <div className="card-body d-flex justify-content-between align-items-center">
-              <div>
-                <p className="text-muted mb-0 fw-bold small">Faltaram</p>
-                <h2 className="fw-bold text-danger mb-0">{stats.faltaram}</h2>
-              </div>
-              <div className="p-3 rounded bg-danger bg-opacity-10 text-danger">
-                <XCircle size={28} />
-              </div>
+            <div className="card bg-dark border-0 shadow-sm p-3 text-white">
+                <div className="d-flex justify-content-between">
+                    <div><h2 className="mb-0 text-danger">{stats.faltaram}</h2><small className="text-muted">Faltaram</small></div>
+                    <XCircle className="text-danger" size={28}/>
+                </div>
             </div>
-          </div>
         </div>
-
-        {/* Aguardando */}
         <div className="col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
-            <div className="card-body d-flex justify-content-between align-items-center">
-              <div>
-                <p className="text-muted mb-0 fw-bold small">Aguardando</p>
-                <h2 className="fw-bold text-warning mb-0">{stats.aguardando}</h2>
-              </div>
-              <div className="p-3 rounded bg-warning bg-opacity-10 text-warning">
-                <Bus size={28} />
-              </div>
+            <div className="card bg-dark border-0 shadow-sm p-3 text-white">
+                <div className="d-flex justify-content-between">
+                    <div><h2 className="mb-0 text-warning">{stats.aguardando}</h2><small className="text-muted">Aguardando</small></div>
+                    <Bus className="text-warning" size={28}/>
+                </div>
             </div>
-          </div>
         </div>
       </div>
 
-      {/* 2. LISTA DE STATUS DOS ÔNIBUS */}
-      <h5 className="fw-bold text-white mb-3">Status dos Ônibus</h5>
-      
-      <div className="d-flex flex-column gap-3">
-        {frota.map((bus) => (
-          <div key={bus.id} className="card border-0 shadow-sm" style={{ background: '#1e293b' }}>
-            <div className="card-body">
-              <div className="row align-items-center">
-                
-                {/* Coluna 1: Info do Ônibus */}
-                <div className="col-md-4">
-                  <h6 className="fw-bold text-white mb-1">
-                    <span className="text-primary me-2"><Bus size={18} style={{marginBottom: 2}}/></span>
-                    {bus.nomeOnibus} <span className="text-muted small fw-normal">({bus.placa})</span>
-                  </h6>
-                  <div className="d-flex align-items-center mt-2 text-muted small">
-                    <MapPin size={14} className="me-1" />
-                    <span>Parada Atual: <strong>Garagem / Inicial</strong></span>
-                  </div>
-                </div>
-
-                {/* Coluna 2: Barra de Progresso */}
-                <div className="col-md-5">
-                  <div className="d-flex justify-content-between small mb-1">
-                    <span className="text-muted">Progresso da Rota</span>
-                    <span className="text-white">0%</span>
-                  </div>
-                  <div className="progress" style={{ height: '8px', backgroundColor: '#334155' }}>
-                    <div 
-                      className="progress-bar bg-primary" 
-                      role="progressbar" 
-                      style={{ width: '0%' }}
-                    ></div>
-                  </div>
-                  <small className="text-muted" style={{fontSize: '0.7rem'}}>0 de 5 paradas concluídas</small>
-                </div>
-
-                {/* Coluna 3: Motorista e Lotação */}
-                <div className="col-md-3 text-end border-start border-secondary border-opacity-25 ps-4">
-                   <div className="mb-1">
-                      <small className="text-muted d-block">Motorista</small>
-                      <strong className="text-white small">{bus.nomeMotorista || 'Não definido'}</strong>
-                   </div>
-                   <div>
-                      <small className="text-muted d-block">Alunos</small>
-                      <strong className="text-white small">0 / {bus.capacidadeMaxima}</strong>
-                   </div>
-                </div>
-
-              </div>
-            </div>
+      {/* LISTA DE ÔNIBUS (VISUAL RESTAURADO) */}
+      <div className="card border-0 shadow-sm bg-dark text-white">
+          <div className="card-header bg-transparent border-secondary py-3">
+              <h5 className="mb-0 fw-bold">Status da Frota Diária</h5>
           </div>
-        ))}
+          <div className="list-group list-group-flush">
+            {frota.length === 0 ? (
+                <div className="p-4 text-center text-muted">Nenhum ônibus cadastrado.</div>
+            ) : (
+                frota.map(bus => {
+                    const status = statusFrota.find(s => s.onibusId === bus.id);
+                    const isConcluido = status?.concluida;
 
-        {frota.length === 0 && (
-          <div className="text-center text-muted py-5 border border-secondary border-dashed rounded">
-            Nenhum ônibus ativo no momento.
+                    return (
+                        <div key={bus.id} className="list-group-item bg-dark text-white border-secondary p-3 d-flex align-items-center justify-content-between">
+                            <div className="d-flex align-items-center">
+                                <div className={`p-2 rounded me-3 ${isConcluido ? 'bg-success text-white' : 'bg-warning text-dark'}`}>
+                                    <Bus size={24}/>
+                                </div>
+                                <div>
+                                    <h6 className="mb-0 fw-bold">{bus.nomeOnibus}</h6>
+                                    <small className="text-muted">{bus.placa}</small>
+                                </div>
+                            </div>
+                            
+                            {isConcluido ? (
+                                <span className="badge bg-success p-2 px-3">ROTA CONCLUÍDA</span>
+                            ) : (
+                                <span className="badge bg-warning text-dark p-2 px-3">EM ANDAMENTO</span>
+                            )}
+                        </div>
+                    );
+                })
+            )}
           </div>
-        )}
       </div>
-
     </div>
   );
 }
