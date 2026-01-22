@@ -151,7 +151,7 @@ export function Refeitorio() {
               Pastoso ({stats.pastoso})
             </button>
             <button onClick={() => setFiltro('Com Restrição')} className={`btn btn-sm fw-bold ${filtro === 'Com Restrição' ? 'btn-warning text-dark' : 'btn-light border'}`}>   
-            Sem Restrição ({stats.comRestricao})
+            Com Restrição ({stats.comRestricao})
             </button> 
           </div>
         </div>
