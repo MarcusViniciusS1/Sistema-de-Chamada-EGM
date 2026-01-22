@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Users, CheckCircle, XCircle, Bus, Clock } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Bus, MapPin, Clock } from 'lucide-react';
 
-// ATUALIZADO: Interface agora tem os números
+interface Onibus {
+  id: number;
+  nomeOnibus: string;
+  placa: string;
+  nomeMotorista: string;
+  capacidadeMaxima: number;
+}
+
 interface StatusOnibus {
     onibusId: number;
     concluida: boolean;
@@ -11,185 +18,191 @@ interface StatusOnibus {
     faltaram: number;
 }
 
-interface Onibus {
-    id: number;
-    nomeOnibus: string;
-    placa: string;
-}
-
 export function Dashboard() {
   const [frota, setFrota] = useState<Onibus[]>([]);
   const [statusFrota, setStatusFrota] = useState<StatusOnibus[]>([]);
-  const [stats, setStats] = useState({ 
-    total: 0, 
-    embarcaram: 0, 
+  const [stats, setStats] = useState({
+    total: 0,
+    embarcaram: 0,
     presentesPortaria: 0,
-    faltaram: 0, 
-    aguardando: 0 
+    faltaram: 0,
+    aguardando: 0
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     carregarDados();
-    const intervalo = setInterval(carregarDados, 5000); 
-    return () => clearInterval(intervalo);
+    const interval = setInterval(carregarDados, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   async function carregarDados() {
     try {
-      const [resOnibus, resStatus, resResumo] = await Promise.all([
-        axios.get('http://localhost:8080/api/onibus'),
-        axios.get('http://localhost:8080/api/monitora/status-frota'),
-        axios.get('http://localhost:8080/api/dashboard/resumo')
+      const [resOnibus, resResumo, resStatus] = await Promise.all([
+        axios.get('http://localhost:8080/api/onibus').catch(() => ({ data: [] })),
+        axios.get('http://localhost:8080/api/dashboard/resumo').catch(() => ({ data: null })),
+        axios.get('http://localhost:8080/api/monitora/status-frota').catch(() => ({ data: [] }))
       ]);
 
-      setFrota(resOnibus.data);
-      setStatusFrota(resStatus.data);
-      
-      if(resResumo.data) {
-        setStats({
+      setFrota(resOnibus.data || []);
+      setStatusFrota(resStatus.data || []);
+
+      if (resResumo.data) {
+          setStats({
             total: resResumo.data.totalAlunos,
             embarcaram: resResumo.data.embarcaram,
             presentesPortaria: resResumo.data.presentesPortaria || 0,
             faltaram: resResumo.data.faltaram,
             aguardando: resResumo.data.aguardando
-        });
+          });
       }
-    } catch (e) { console.error("Erro dashboard", e); }
+    } catch (error) {
+      console.error("Erro ao carregar dashboard", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const totalPresentes = stats.embarcaram + stats.presentesPortaria;
+
+  if (loading) return <div className="p-5 text-center text-white">Carregando painel...</div>;
 
   return (
     <div className="container-fluid" style={{ maxWidth: '1200px' }}>
       
       <div className="mb-4">
-        <h3 className="fw-bold text-white mb-1">Visão Geral</h3>
-        <p className="text-muted small">Acompanhamento de alunos e transporte</p>
+        <h3 className="fw-bold text-white mb-1">Dashboard - Sistema de Embarque APAE</h3>
+        <p className="text-muted small">Acompanhamento em tempo real do transporte escolar</p>
       </div>
 
-      {/* --- CARDS DE ESTATÍSTICAS (MANTIDOS IGUAIS) --- */}
+      {/* 1. CARDS DE STATUS (TOPO - ORIGINAL) */}
       <div className="row g-3 mb-4">
         <div className="col-md-3">
-            <div className="card bg-dark border-0 shadow-sm p-3 text-white h-100">
-                <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 className="mb-0 fw-bold">{stats.total}</h2>
-                        <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.75rem'}}>Total de Alunos</small>
-                    </div>
-                    <div className="p-3 bg-primary bg-opacity-10 rounded text-primary"><Users size={24}/></div>
-                </div>
+          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
+            <div className="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <p className="text-muted mb-0 fw-bold small">Total de Alunos</p>
+                <h2 className="fw-bold text-white mb-0">{stats.total}</h2>
+              </div>
+              <div className="p-3 rounded bg-primary bg-opacity-10 text-primary"><Users size={28} /></div>
             </div>
+          </div>
         </div>
+
         <div className="col-md-3">
-            <div className="card bg-dark border-0 shadow-sm p-3 text-white h-100">
-                <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 className="mb-0 fw-bold text-success">{totalPresentes}</h2>
-                        <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.75rem'}}>Alunos Presentes</small>
-                    </div>
-                    <div className="p-3 bg-success bg-opacity-10 rounded text-success"><CheckCircle size={24}/></div>
-                </div>
+          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
+            <div className="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <p className="text-muted mb-0 fw-bold small">Presentes</p>
+                <h2 className="fw-bold text-success mb-0">{totalPresentes}</h2>
+              </div>
+              <div className="p-3 rounded bg-success bg-opacity-10 text-success"><CheckCircle size={28} /></div>
             </div>
+          </div>
         </div>
+
         <div className="col-md-3">
-            <div className="card bg-dark border-0 shadow-sm p-3 text-white h-100">
-                <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 className="mb-0 fw-bold text-danger">{stats.faltaram}</h2>
-                        <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.75rem'}}>Faltas Registradas</small>
-                    </div>
-                    <div className="p-3 bg-danger bg-opacity-10 rounded text-danger"><XCircle size={24}/></div>
-                </div>
+          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
+            <div className="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <p className="text-muted mb-0 fw-bold small">Faltaram</p>
+                <h2 className="fw-bold text-danger mb-0">{stats.faltaram}</h2>
+              </div>
+              <div className="p-3 rounded bg-danger bg-opacity-10 text-danger"><XCircle size={28} /></div>
             </div>
+          </div>
         </div>
+
         <div className="col-md-3">
-            <div className="card bg-dark border-0 shadow-sm p-3 text-white h-100">
-                <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 className="mb-0 fw-bold text-warning">{stats.aguardando}</h2>
-                        <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.75rem'}}>Aguardando Check-in</small>
-                    </div>
-                    <div className="p-3 bg-warning bg-opacity-10 rounded text-warning"><Clock size={24}/></div>
-                </div>
+          <div className="card border-0 shadow-sm h-100" style={{ background: '#1e293b' }}>
+            <div className="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <p className="text-muted mb-0 fw-bold small">Aguardando</p>
+                <h2 className="fw-bold text-warning mb-0">{stats.aguardando}</h2>
+              </div>
+              <div className="p-3 rounded bg-warning bg-opacity-10 text-warning"><Clock size={28} /></div>
             </div>
+          </div>
         </div>
       </div>
 
-      {/* --- LISTA DE ÔNIBUS COM DETALHES --- */}
-      <div className="card border-0 shadow-sm bg-dark text-white">
-          <div className="card-header bg-transparent border-secondary py-3">
-              <h5 className="mb-0 fw-bold"><Bus className="me-2 text-primary" size={20}/> Detalhes da Frota</h5>
-          </div>
-          <div className="list-group list-group-flush">
-            {frota.length === 0 ? (
-                <div className="p-5 text-center text-muted">Nenhum ônibus cadastrado no sistema.</div>
-            ) : (
-                frota.map(bus => {
-                    const status = statusFrota.find(s => s.onibusId === bus.id);
-                    const isConcluido = status?.concluida;
+      {/* 2. LISTA DE STATUS DOS ÔNIBUS (VISUAL EM COLUNAS RESTAURADO) */}
+      <h5 className="fw-bold text-white mb-3">Status da Frota</h5>
+      
+      <div className="d-flex flex-column gap-3">
+        {frota.map((bus) => {
+          const status = statusFrota.find(s => s.onibusId === bus.id);
+          const isConcluido = status?.concluida;
+          
+          const totalBus = status?.totalAlunos || 1;
+          const processados = (status?.embarcaram || 0) + (status?.faltaram || 0);
+          // Se concluído, força 100%, senão calcula
+          const progresso = isConcluido ? 100 : Math.round((processados / totalBus) * 100);
+
+          return (
+            <div key={bus.id} className="card border-0 shadow-sm" style={{ background: '#1e293b' }}>
+                <div className="card-body">
+                <div className="row align-items-center">
                     
-                    // Dados individuais deste ônibus
-                    const totalBus = status?.totalAlunos || 0;
-                    const embarcadosBus = status?.embarcaram || 0;
-                    const faltasBus = status?.faltaram || 0;
-                    const aguardandoBus = totalBus - embarcadosBus - faltasBus;
-
-                    // Cálculo da porcentagem para barra de progresso
-                    const processados = embarcadosBus + faltasBus;
-                    const percentual = totalBus > 0 ? (processados / totalBus) * 100 : 0;
-
-                    return (
-                        <div key={bus.id} className="list-group-item bg-dark text-white border-secondary p-4">
-                            <div className="row align-items-center">
-                                {/* Nome e Ícone */}
-                                <div className="col-md-4 mb-3 mb-md-0 d-flex align-items-center">
-                                    <div className={`p-3 rounded-circle me-3 ${isConcluido ? 'bg-success bg-opacity-10 text-success' : 'bg-primary bg-opacity-10 text-primary'}`}>
-                                        <Bus size={24}/>
-                                    </div>
-                                    <div>
-                                        <h5 className="mb-0 fw-bold">{bus.nomeOnibus}</h5>
-                                        <small className="text-muted">{bus.placa}</small>
-                                    </div>
-                                </div>
-
-                                {/* Status e Barra de Progresso */}
-                                <div className="col-md-5 mb-3 mb-md-0">
-                                    <div className="d-flex justify-content-between small mb-1">
-                                        <span className="text-muted">
-                                            {isConcluido ? 'Finalizado' : 'Em andamento'}
-                                        </span>
-                                        <span className="text-white">
-                                            {processados} / {totalBus} alunos processados
-                                        </span>
-                                    </div>
-                                    <div className="progress" style={{height: '6px', backgroundColor: '#334155'}}>
-                                        <div 
-                                            className={`progress-bar ${isConcluido ? 'bg-success' : 'bg-primary'}`} 
-                                            role="progressbar" 
-                                            style={{width: `${percentual}%`}}
-                                        ></div>
-                                    </div>
-                                    <div className="mt-2 d-flex gap-3 small">
-                                        <span className="text-success"><CheckCircle size={12} className="me-1"/>{embarcadosBus} presentes</span>
-                                        <span className="text-danger"><XCircle size={12} className="me-1"/>{faltasBus} faltas</span>
-                                        {aguardandoBus > 0 && <span className="text-warning"><Clock size={12} className="me-1"/>{aguardandoBus} aguardando</span>}
-                                    </div>
-                                </div>
-                                
-                                {/* Badge Final */}
-                                <div className="col-md-3 text-end">
-                                    {isConcluido ? (
-                                        <span className="badge bg-success p-2 px-3">ROTA CONCLUÍDA</span>
-                                    ) : (
-                                        <span className="badge bg-warning text-dark p-2 px-3">EM ANDAMENTO</span>
-                                    )}
-                                </div>
-                            </div>
+                    {/* Coluna 1: Info do Ônibus */}
+                    <div className="col-md-4">
+                        <h6 className="fw-bold text-white mb-1">
+                            <span className="text-primary me-2"><Bus size={18} style={{marginBottom: 2}}/></span>
+                            {bus.nomeOnibus} <span className="text-muted small fw-normal">({bus.placa})</span>
+                        </h6>
+                        <div className="d-flex align-items-center mt-2 text-muted small">
+                            <MapPin size={14} className="me-1" />
+                            <span>Status: <strong className={isConcluido ? "text-success" : "text-warning"}>
+                                {isConcluido ? 'Finalizado' : 'Em Rota'}
+                            </strong></span>
                         </div>
-                    );
-                })
-            )}
+                    </div>
+
+                    {/* Coluna 2: Barra de Progresso */}
+                    <div className="col-md-5">
+                        <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Progresso da Rota</span>
+                            <span className="text-white">{progresso}%</span>
+                        </div>
+                        <div className="progress" style={{ height: '8px', backgroundColor: '#334155' }}>
+                            <div 
+                                className={`progress-bar ${isConcluido ? 'bg-success' : 'bg-primary'}`} 
+                                role="progressbar" 
+                                style={{ width: `${progresso}%` }}
+                            ></div>
+                        </div>
+                        <small className="text-muted" style={{fontSize: '0.7rem'}}>
+                            {isConcluido 
+                                ? 'Rota encerrada pelo monitor.' 
+                                : `${processados} de ${totalBus} alunos processados`}
+                        </small>
+                    </div>
+
+                    {/* Coluna 3: Motorista e Lotação */}
+                    <div className="col-md-3 text-end border-start border-secondary border-opacity-25 ps-4">
+                        <div className="mb-1">
+                            <small className="text-muted d-block">Motorista</small>
+                            <strong className="text-white small">{bus.nomeMotorista || 'Não definido'}</strong>
+                        </div>
+                        <div>
+                            <small className="text-muted d-block">Presentes / Total</small>
+                            <strong className="text-white small">
+                                {status?.embarcaram || 0} / {totalBus}
+                            </strong>
+                        </div>
+                    </div>
+
+                </div>
+                </div>
+            </div>
+          );
+        })}
+
+        {frota.length === 0 && (
+          <div className="text-center text-muted py-5 border border-secondary border-dashed rounded">
+            Nenhum ônibus ativo no momento.
           </div>
+        )}
       </div>
     </div>
   );

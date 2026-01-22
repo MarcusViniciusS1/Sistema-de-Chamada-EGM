@@ -1,129 +1,185 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Bus, Shield, Utensils, LogOut, UserCog, Smartphone, GraduationCap } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Map, 
+  Utensils, 
+  DoorOpen, 
+  LogOut, 
+  Users, 
+  Bus, 
+  UserCog, 
+  Settings, 
+  RefreshCw,
+  ChevronRight
+} from 'lucide-react';
+import { useState } from 'react';
+import axios from 'axios';
 
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  
   const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-  const perfil = usuarioLogado.perfil;
+  const isAdmin = usuarioLogado.perfil === 'ADMIN';
+
+  // Estado para controlar o menu da engrenagem
+  const [menuConfigAberto, setMenuConfigAberto] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('usuarioLogado');
     navigate('/');
   };
 
-  // Estilo do link ativo: Um fundo azul suave com borda esquerda brilhante
-  const getLinkClass = (path: string) => {
-    const isActive = location.pathname === path;
-    return `nav-link d-flex align-items-center px-3 py-2 rounded-2 mb-1 transition-all ${
-      isActive 
-        ? 'bg-primary text-white shadow-sm fw-bold' 
-        : 'text-gray-400 hover-bg-slate'
-    }`;
+  const handleResetarDia = async () => {
+    if (window.confirm("⚠️ ATENÇÃO: Isso apagará TODAS as chamadas e status de rotas de HOJE.\n\nUse apenas para corrigir bugs.\n\nDeseja continuar?")) {
+        try {
+            await axios.delete('http://localhost:8080/api/sistema/resetar-dia');
+            alert("Sistema resetado com sucesso! A página será recarregada.");
+            window.location.reload();
+        } catch (error) {
+            alert("Erro ao resetar sistema.");
+        }
+    }
+    setMenuConfigAberto(false);
   };
 
-  // Estilo inline para customizar hover que o Bootstrap não tem nativo fácil
-  const linkStyle = { color: '#cbd5e1', textDecoration: 'none' };
+  // Ítem de Menu Componentizado para evitar repetição
+  const MenuItem = ({ to, icon, label }: { to: string, icon: any, label: string }) => (
+    <li className="nav-item mb-1">
+      <Link
+        to={to}
+        className={`nav-link d-flex align-items-center px-3 py-2 rounded-3 ${
+          location.pathname === to 
+            ? 'bg-primary text-white shadow fw-bold' 
+            : 'text-white-50 hover-bg-dark text-decoration-none'
+        }`}
+        style={{ transition: 'all 0.2s ease-in-out' }}
+      >
+        <span className="me-3 d-flex align-items-center">{icon}</span>
+        <span style={{ fontSize: '0.95rem' }}>{label}</span>
+        {location.pathname === to && <ChevronRight size={16} className="ms-auto opacity-75"/>}
+      </Link>
+    </li>
+  );
 
   return (
-    <div className="d-flex vh-100" style={{backgroundColor: '#0f172a'}}> {/* Fundo Body Global */}
+    <div className="d-flex vh-100" style={{ backgroundColor: '#0f172a' }}>
       
-      {/* SIDEBAR - Cor escura personalizada (#1e293b é o Slate-800) */}
-      <div className="d-flex flex-column flex-shrink-0 p-3" 
-           style={{ width: '260px', backgroundColor: '#1e293b', borderRight: '1px solid #334155' }}>
+      {/* SIDEBAR */}
+      <aside className="d-flex flex-column p-3 text-white border-end border-secondary border-opacity-25" 
+             style={{ width: '280px', backgroundColor: '#1e293b' }}>
         
-        <a href="/" className="d-flex align-items-center mb-4 text-white text-decoration-none px-2">
-          <div className="bg-primary p-2 rounded-3 me-3 shadow">
-            <Bus size={24} className="text-white" />
-          </div>
-          <span className="fs-5 fw-bold tracking-tight">Sistema APAE</span>
-        </a>
-        
-        <hr className="border-secondary opacity-25 mb-4 mt-0" />
-        
-        <ul className="nav nav-pills flex-column mb-auto">
-          
-          {perfil === 'ADMIN' && (
-            <>
-              <small className="text-uppercase fw-bold text-muted ms-2 mb-2" style={{fontSize: '0.7rem', letterSpacing: '1px'}}>Administração</small>
-              <li className="nav-item">
-                <Link to="/dashboard" className={getLinkClass('/dashboard')} style={location.pathname !== '/dashboard' ? linkStyle : {}}>
-                  <LayoutDashboard size={18} className="me-3"/> Dashboard
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link to="/usuarios" className={getLinkClass('/usuarios')} style={location.pathname !== '/usuarios' ? linkStyle : {}}>
-                  <UserCog size={18} className="me-3"/> Usuários
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link to="/alunos" className={getLinkClass('/alunos')} style={location.pathname !== '/alunos' ? linkStyle : {}}>
-                  <GraduationCap size={18} className="me-3"/> Alunos
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link to="/onibus" className={getLinkClass('/onibus')} style={location.pathname !== '/onibus' ? linkStyle : {}}>
-                  <Bus size={18} className="me-3"/> Frota
-                </Link>
-              </li>
-              <div className="my-3"></div>
-            </>
-          )}
-
-          <small className="text-uppercase fw-bold text-muted ms-2 mb-2" style={{fontSize: '0.7rem', letterSpacing: '1px'}}>Operacional</small>
-          
-          {(perfil === 'ADMIN' || perfil === 'PORTEIRO') && (
-            <li className="nav-item">
-              <Link to="/portaria" className={getLinkClass('/portaria')} style={location.pathname !== '/portaria' ? linkStyle : {}}>
-                <Shield size={18} className="me-3"/> Portaria
-              </Link>
-            </li>
-          )}
-
-          {(perfil === 'ADMIN' || perfil === 'REFEITORIO') && (
-            <li className="nav-item">
-              <Link to="/refeitorio" className={getLinkClass('/refeitorio')} style={location.pathname !== '/refeitorio' ? linkStyle : {}}>
-                <Utensils size={18} className="me-3"/> Refeitório
-              </Link>
-            </li>
-          )}
-
-          {(perfil === 'ADMIN' || perfil === 'MONITOR') && (
-            <li className="nav-item">
-              <Link to="/monitora" className={getLinkClass('/monitora')} style={location.pathname !== '/monitora' ? linkStyle : {}}>
-                <Smartphone size={18} className="me-3"/> App Monitora
-              </Link>
-            </li>
-          )}
-
-        </ul>
-        
-        <div className="mt-auto pt-4 border-top border-secondary border-opacity-25">
-          <div className="d-flex align-items-center p-2 rounded-3" style={{backgroundColor: '#0f172a'}}>
-            <div className="me-2 bg-gradient bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" 
-                 style={{width: 36, height: 36, fontWeight: 'bold'}}>
-                {usuarioLogado.nome ? usuarioLogado.nome.charAt(0).toUpperCase() : 'U'}
+        {/* CABEÇALHO */}
+        <div className="d-flex align-items-center mb-5 px-2 mt-2">
+            <div className="bg-primary bg-gradient rounded-3 p-2 me-3 text-white shadow-sm">
+                <Bus size={28}/>
             </div>
-            <div className="overflow-hidden me-auto">
-                <strong className="d-block text-truncate text-white" style={{fontSize: '0.9rem', maxWidth: '100px'}}>
-                  {usuarioLogado.nome?.split(' ')[0]}
-                </strong>
-                <small className="text-muted" style={{fontSize: '0.7rem'}}>{perfil}</small>
+            <div className="lh-1">
+                <h5 className="mb-0 fw-bold tracking-tight">Sistema APAE</h5>
+                <small className="text-white-50" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>Transporte Escolar</small>
             </div>
-            <button onClick={handleLogout} className="btn btn-icon btn-sm text-danger hover-danger" title="Sair">
-                <LogOut size={18}/>
-            </button>
+        </div>
+
+        {/* NAVEGAÇÃO COM SCROLL */}
+        <div className="flex-grow-1 overflow-auto custom-scrollbar">
+            
+            {/* GRUPO OPERACIONAL */}
+            <div className="mb-4">
+                <small className="text-uppercase text-white-50 fw-bold px-3 mb-2 d-block" style={{fontSize: '0.7rem', letterSpacing: '1px'}}>
+                    Operacional
+                </small>
+                <ul className="nav nav-pills flex-column">
+                    <MenuItem to="/dashboard" icon={<LayoutDashboard size={20}/>} label="Dashboard" />
+                    <MenuItem to="/monitora" icon={<Map size={20}/>} label="Monitoramento" />
+                    <MenuItem to="/refeitorio" icon={<Utensils size={20}/>} label="Refeitório" />
+                    <MenuItem to="/portaria" icon={<DoorOpen size={20}/>} label="Portaria" />
+                </ul>
+            </div>
+
+            {/* GRUPO ADMINISTRAÇÃO (SÓ ADMIN) */}
+            {isAdmin && (
+                <div className="mb-4">
+                    <small className="text-uppercase text-white-50 fw-bold px-3 mb-2 d-block" style={{fontSize: '0.7rem', letterSpacing: '1px'}}>
+                        Administração
+                    </small>
+                    <ul className="nav nav-pills flex-column">
+                        <MenuItem to="/alunos" icon={<Users size={20}/>} label="Alunos" />
+                        <MenuItem to="/frota" icon={<Bus size={20}/>} label="Frota" />
+                        <MenuItem to="/usuarios" icon={<UserCog size={20}/>} label="Usuários" />
+                    </ul>
+                </div>
+            )}
+
+        </div>
+
+        {/* RODAPÉ (USUÁRIO + CONFIG + SAIR) */}
+        <div className="mt-3 pt-3 border-top border-secondary border-opacity-25">
+          <div className="d-flex align-items-center justify-content-between px-2">
+            
+            {/* Info Usuário */}
+            <div className="d-flex align-items-center overflow-hidden">
+                <div className="bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center me-3 flex-shrink-0 text-white" 
+                     style={{width: 40, height: 40}}>
+                    <span className="fw-bold fs-6">{usuarioLogado.nome?.charAt(0)}</span>
+                </div>
+                <div className="text-truncate">
+                    <div className="fw-bold small text-white">{usuarioLogado.nome}</div>
+                    <div className="text-white-50" style={{fontSize: '0.7rem'}}>{usuarioLogado.perfil}</div>
+                </div>
+            </div>
+
+            {/* Ações */}
+            <div className="d-flex align-items-center position-relative">
+                
+                {/* ENGRENAGEM (ADMIN) */}
+                {isAdmin && (
+                    <div className="position-relative">
+                        <button 
+                            className={`btn btn-link p-2 me-1 rounded-circle transition-all ${menuConfigAberto ? 'text-primary bg-dark' : 'text-white-50 hover-text-white'}`}
+                            onClick={() => setMenuConfigAberto(!menuConfigAberto)}
+                            title="Ferramentas do Sistema"
+                        >
+                            <Settings size={20}/>
+                        </button>
+
+                        {/* MENU FLUTUANTE */}
+                        {menuConfigAberto && (
+                            <div className="position-absolute bottom-100 end-0 mb-3 bg-dark border border-secondary border-opacity-50 rounded-3 shadow-lg p-2 animate-fade-in" 
+                                 style={{width: '200px', zIndex: 9999}}>
+                                <div className="px-2 py-1 mb-2 border-bottom border-secondary border-opacity-25">
+                                    <small className="fw-bold text-white text-uppercase" style={{fontSize:'0.65rem'}}>Ações Rápidas</small>
+                                </div>
+                                <button 
+                                    className="btn btn-sm btn-danger w-100 d-flex align-items-center justify-content-start px-3 py-2 fw-bold"
+                                    onClick={handleResetarDia}
+                                >
+                                    <RefreshCw size={14} className="me-2"/> Reiniciar Dia
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* BOTÃO SAIR */}
+                <button 
+                    onClick={handleLogout} 
+                    className="btn btn-link p-2 text-white-50 hover-text-danger rounded-circle transition-all" 
+                    title="Sair"
+                >
+                    <LogOut size={20}/>
+                </button>
+            </div>
+
           </div>
         </div>
-      </div>
+
+      </aside>
 
       {/* ÁREA DE CONTEÚDO */}
-      <div className="flex-grow-1 overflow-auto" style={{backgroundColor: '#0f172a'}}> {/* Garante fundo escuro */}
-        <div className="p-4">
+      <main className="flex-grow-1 overflow-auto bg-dark">
+        <div className="container-fluid p-4">
           <Outlet />
         </div>
-      </div>
+      </main>
     </div>
   );
 }

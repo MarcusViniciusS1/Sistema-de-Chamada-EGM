@@ -25,13 +25,34 @@ public class MonitoraController {
     @Autowired
     private RotaDiariaRepository rotaDiariaRepository;
     @Autowired
-    private ChamadaRepository chamadaRepository; // Adicionado para contar presenças
+    private ChamadaRepository chamadaRepository;
 
-    // DTOs
-    public record DadosRotaDTO(Long onibusId, String nomeOnibus, String placa, List<ParadaComAlunosDTO> paradas) {}
-    public record ParadaComAlunosDTO(Long id, String nomeParada, String endereco, List<Aluno> alunosEsperados) {}
+    // --- DTOs (Data Transfer Objects) ---
+    // Esses objetos servem para formatar o JSON de resposta sem causar loops infinitos
 
-    // ATUALIZADO: Agora retorna contagens por ônibus
+    public record DadosRotaDTO(
+            Long onibusId,
+            String nomeOnibus,
+            String placa,
+            List<ParadaComAlunosDTO> paradas
+    ) {}
+
+    public record ParadaComAlunosDTO(
+            Long id,
+            String nomeParada,
+            String endereco,
+            List<AlunoResumoDTO> alunosEsperados // <--- MUDANÇA AQUI: Usamos o Resumo, não o Aluno completo
+    ) {}
+
+    // Novo DTO simples para o Aluno (evita o erro de recursão)
+    public record AlunoResumoDTO(
+            Long id,
+            String nomeCompleto,
+            String matricula,
+            String tipoAlimentar,
+            String statusHoje
+    ) {}
+
     public record StatusRotaDTO(
             Long onibusId,
             boolean concluida,
@@ -39,6 +60,8 @@ public class MonitoraController {
             int embarcaram,
             int faltaram
     ) {}
+
+    // --- ENDPOINTS ---
 
     // 1. Rota Atual (Monitora)
     @GetMapping("/rota-atual/{usuarioId}")
@@ -77,19 +100,17 @@ public class MonitoraController {
         return calcularStatusUnico(onibusId);
     }
 
-    // 5. Status da Frota (Para o Dashboard - ATUALIZADO)
+    // 5. Status da Frota (Para o Dashboard)
     @GetMapping("/status-frota")
     public List<StatusRotaDTO> getStatusFrota() {
         LocalDate hoje = LocalDate.now();
-        List<Chamada> chamadasHoje = chamadaRepository.findAllByDataChamada(hoje); // Pega tudo de uma vez para ser rápido
+        List<Chamada> chamadasHoje = chamadaRepository.findAllByDataChamada(hoje);
 
         return onibusRepository.findAll().stream().map(onibus -> {
-            // 1. Verifica se está concluída
             boolean concluida = rotaDiariaRepository.findByOnibusAndData(onibus, hoje)
                     .map(RotaDiaria::isConcluida)
                     .orElse(false);
 
-            // 2. Busca alunos deste ônibus (através das paradas)
             List<ParadaOnibus> paradas = paradaRepository.findByOnibus_Id(onibus.getId());
             List<Aluno> alunosDoOnibus = paradas.stream()
                     .flatMap(p -> alunoRepository.findByParadaId(p.getId()).stream())
@@ -99,7 +120,6 @@ public class MonitoraController {
             int embarcaram = 0;
             int faltaram = 0;
 
-            // 3. Cruza com as chamadas de hoje
             for (Aluno aluno : alunosDoOnibus) {
                 Optional<Chamada> chamada = chamadasHoje.stream()
                         .filter(c -> c.getAluno().getId().equals(aluno.getId()))
@@ -115,9 +135,7 @@ public class MonitoraController {
         }).collect(Collectors.toList());
     }
 
-    // Auxiliar para calcular um único ônibus (reaproveita lógica se precisar)
     private StatusRotaDTO calcularStatusUnico(Long onibusId) {
-        // Lógica simplificada para retorno rápido no check de bloqueio
         Onibus onibus = onibusRepository.findById(onibusId).orElseThrow();
         boolean concluida = rotaDiariaRepository.findByOnibusAndData(onibus, LocalDate.now())
                 .map(RotaDiaria::isConcluida)
@@ -125,12 +143,40 @@ public class MonitoraController {
         return new StatusRotaDTO(onibusId, concluida, 0, 0, 0);
     }
 
+    // --- MÉTODO CORRIGIDO PARA MONTAR A ROTA ---
     private DadosRotaDTO montarDadosRota(Onibus onibus) {
         List<ParadaOnibus> paradas = paradaRepository.findByOnibus_Id(onibus.getId());
+        LocalDate hoje = LocalDate.now();
+
+        // Buscamos todas as chamadas de hoje para preencher o status
+        List<Chamada> chamadasHoje = chamadaRepository.findAllByDataChamada(hoje);
+
         List<ParadaComAlunosDTO> listaParadas = paradas.stream().map(parada -> {
+            // Busca alunos da parada
             List<Aluno> alunos = alunoRepository.findByParadaId(parada.getId());
-            return new ParadaComAlunosDTO(parada.getId(), parada.getNomeParada(), parada.getEndereco(), alunos);
+
+            // Converte Aluno (Entidade) -> AlunoResumoDTO (Simples)
+            List<AlunoResumoDTO> alunosDTO = alunos.stream().map(aluno -> {
+
+                // Verifica se já tem chamada hoje
+                String status = chamadasHoje.stream()
+                        .filter(c -> c.getAluno().getId().equals(aluno.getId()))
+                        .findFirst()
+                        .map(c -> c.getStatus().name())
+                        .orElse(null);
+
+                return new AlunoResumoDTO(
+                        aluno.getId(),
+                        aluno.getNomeCompleto(),
+                        aluno.getMatricula(),
+                        aluno.getTipoAlimentar(),
+                        status
+                );
+            }).toList();
+
+            return new ParadaComAlunosDTO(parada.getId(), parada.getNomeParada(), parada.getEndereco(), alunosDTO);
         }).toList();
+
         return new DadosRotaDTO(onibus.getId(), onibus.getNomeOnibus(), onibus.getPlaca(), listaParadas);
     }
 }

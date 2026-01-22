@@ -10,5 +10,9 @@ import java.util.Optional;
 
 @Repository
 public interface RotaDiariaRepository extends JpaRepository<RotaDiaria, Long> {
+
     Optional<RotaDiaria> findByOnibusAndData(Onibus onibus, LocalDate data);
+
+    // NOVO: Permite deletar as rotas de um dia específico
+    void deleteByData(LocalDate data);
 }
