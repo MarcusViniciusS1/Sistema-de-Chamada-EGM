@@ -1,23 +1,23 @@
 package com.apae.sistema.dto;
 
 import com.apae.sistema.model.Aluno;
+import lombok.Data;
 
-// Este objeto carrega os dados do aluno + o status dele HOJE
-public record AlunoComStatusDTO(
-        Long idSequencial,
-        String matricula,
-        String nomeCompleto,
-        String enderecoResidencial,
-        String statusHoje // "AGUARDANDO", "EMBARCOU", "PRESENTE_PORTARIA", "FALTA"
-) {
-    // Construtor auxiliar para facilitar a conversão
-    public static AlunoComStatusDTO from(Aluno aluno, String status) {
-        return new AlunoComStatusDTO(
-                aluno.getIdSequencial(),
-                aluno.getMatricula(),
-                aluno.getNomeCompleto(),
-                aluno.getEnderecoResidencial(),
-                status
-        );
+@Data
+public class AlunoComStatusDTO {
+    private Long id;
+    private String nomeCompleto;
+    private String matricula;
+    private String tipoAlimentar;
+    private String statusHoje;
+
+    public AlunoComStatusDTO(Aluno aluno, String statusHoje) {
+        // CORREÇÃO: O método correto gerado pelo Lombok é getId()
+        this.id = aluno.getId();
+
+        this.nomeCompleto = aluno.getNomeCompleto();
+        this.matricula = aluno.getMatricula();
+        this.tipoAlimentar = aluno.getTipoAlimentar();
+        this.statusHoje = statusHoje;
     }
 }
