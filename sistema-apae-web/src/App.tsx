@@ -29,8 +29,6 @@ export default function App() {
       <Routes>
         {/* Login (Pública) */}
         <Route path="/" element={<Login />} />
-
-        {/* Rotas do Sistema (Com Menu Lateral) */}
         <Route element={<Layout />}>
           
           {/* Rotas Operacionais (Todos acessam) */}
