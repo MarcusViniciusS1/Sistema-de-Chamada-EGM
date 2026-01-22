@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -16,34 +15,51 @@ public class UsuarioController {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    // 1. LISTAR TODOS (Já traz o ônibus vinculado graças ao JPA)
     @GetMapping
     public List<Usuario> listar() {
         return usuarioRepository.findAll();
     }
 
+    // 2. BUSCAR UM (Para preencher o modal de edição)
+    @GetMapping("/{id}")
+    public ResponseEntity<Usuario> buscarPorId(@PathVariable Long id) {
+        return usuarioRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // 3. CRIAR USUÁRIO
     @PostMapping
-    public ResponseEntity<?> criar(@RequestBody Usuario usuario) {
-        return ResponseEntity.ok(usuarioRepository.save(usuario));
+    public Usuario criar(@RequestBody Usuario usuario) {
+        // O Java converte automaticamente o JSON { "onibus": { "id": 1 } } para o objeto correto
+        return usuarioRepository.save(usuario);
     }
 
+    // 4. ATUALIZAR USUÁRIO (AQUI ESTAVA O PROBLEMA PROVAVELMENTE)
     @PutMapping("/{id}")
-    public ResponseEntity<?> editar(@PathVariable Long id, @RequestBody Usuario dadosAtualizados) {
-        Optional<Usuario> userOpt = usuarioRepository.findById(id);
+    public ResponseEntity<Usuario> atualizar(@PathVariable Long id, @RequestBody Usuario dados) {
+        return usuarioRepository.findById(id)
+                .map(usuario -> {
+                    usuario.setNome(dados.getNome());
+                    usuario.setUsername(dados.getUsername());
+                    usuario.setPerfil(dados.getPerfil());
 
-        if (userOpt.isEmpty()) return ResponseEntity.notFound().build();
+                    // Só troca a senha se o usuário digitou uma nova (não salva em branco)
+                    if (dados.getSenha() != null && !dados.getSenha().isEmpty()) {
+                        usuario.setSenha(dados.getSenha());
+                    }
 
-        Usuario usuario = userOpt.get();
-        usuario.setNome(dadosAtualizados.getNome());
-        usuario.setUsername(dadosAtualizados.getUsername());
-        usuario.setPerfil(dadosAtualizados.getPerfil());
+                    // ATUALIZAÇÃO DO VÍNCULO DO ÔNIBUS
+                    // Se vier null, ele remove o vínculo. Se vier um objeto com ID, ele atualiza.
+                    usuario.setOnibus(dados.getOnibus());
 
-        if (dadosAtualizados.getSenha() != null && !dadosAtualizados.getSenha().isEmpty()) {
-            usuario.setSenha(dadosAtualizados.getSenha());
-        }
-
-        return ResponseEntity.ok(usuarioRepository.save(usuario));
+                    return ResponseEntity.ok(usuarioRepository.save(usuario));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
+    // 5. DELETAR
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         if (usuarioRepository.existsById(id)) {
