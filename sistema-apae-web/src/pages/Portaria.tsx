@@ -1,200 +1,172 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Shield, CheckCircle, AlertTriangle, XCircle, Search, Clock } from 'lucide-react';
+import { Search, UserCheck, Clock, User, CheckCircle, Filter } from 'lucide-react';
 
-interface HistoricoItem {
+interface Aluno {
+  id: number;
+  nomeCompleto: string;
+  matricula: string;
+  tipoAlimentar: string;
+}
+
+interface LogPortaria {
+  id: number; // ID do aluno (para busca)
+  alunoNome: string;
   hora: string;
-  nome: string;
-  status: 'SUCESSO' | 'ERRO' | 'DUPLICADO';
-  mensagem: string;
+  status: string;
 }
 
 export function Portaria() {
   const [termo, setTermo] = useState('');
+  const [alunoEncontrado, setAlunoEncontrado] = useState<Aluno | null>(null);
   const [loading, setLoading] = useState(false);
   
-  // Contadores
-  const [totalPresencasBanco, setTotalPresencasBanco] = useState(0);
-  const [statsLocais, setStatsLocais] = useState({ duplicados: 0, erros: 0 });
-  
-  // Histórico Visual
-  const [historico, setHistorico] = useState<HistoricoItem[]>([]);
+  // Estados do Histórico
+  const [logs, setLogs] = useState<LogPortaria[]>([]);
+  const [filtroHistorico, setFiltroHistorico] = useState('');
 
-  // Carrega dados iniciais ao abrir a página
+  // 1. Carrega histórico ao abrir a tela
   useEffect(() => {
-    carregarDadosIniciais();
+    carregarHistorico();
   }, []);
 
-  const carregarDadosIniciais = async () => {
+  const carregarHistorico = async () => {
     try {
-      // 1. Busca o totalizador
-      const resResumo = await axios.get('http://localhost:8080/api/dashboard/resumo');
-      setTotalPresencasBanco(resResumo.data.presentesPortaria);
-
-      // 2. Busca o histórico persistente do banco
-      const resHistorico = await axios.get('http://localhost:8080/api/chamada/historico-portaria');
-      
-      // Converte os dados do Java para o formato visual da tabela
-      const historicoFormatado: HistoricoItem[] = resHistorico.data.map((item: any) => ({
-        hora: item.hora,
-        nome: item.alunoNome,
-        status: 'SUCESSO', // Registros do banco são sempre sucessos
-        mensagem: 'Registro salvo'
-      }));
-      
-      setHistorico(historicoFormatado);
-
-    } catch (error) {
-      console.error("Erro ao carregar dados da portaria", error);
-    }
+      const res = await axios.get('http://localhost:8080/api/chamadas/do-dia');
+      setLogs(res.data);
+    } catch (e) { console.error("Erro ao carregar histórico"); }
   };
 
-  const handleVerificar = async (e: React.FormEvent) => {
+  const buscarAluno = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!termo.trim()) return;
-
+    if (!termo) return;
     setLoading(true);
-    
+    setAlunoEncontrado(null);
+
     try {
-      const response = await axios.post('http://localhost:8080/api/chamada/registrar-portaria', { 
-        termo: termo 
+      const res = await axios.get(`http://localhost:8080/api/alunos/buscar?termo=${termo}`);
+      if (res.data && res.data.length > 0) {
+        setAlunoEncontrado(res.data[0]);
+      } else {
+        alert("Aluno não encontrado.");
+      }
+    } catch (error) { alert("Erro ao buscar."); } 
+    finally { setLoading(false); }
+  };
+
+  const registrarEntrada = async () => {
+    if (!alunoEncontrado) return;
+    try {
+      await axios.post('http://localhost:8080/api/chamadas', {
+        alunoId: alunoEncontrado.id,
+        status: 'EMBARCOU' // Conta como presença
       });
 
-      const dados = response.data;
+      alert(`Entrada registrada: ${alunoEncontrado.nomeCompleto}`);
       
-      if (dados.status === 'SUCESSO') {
-        // Se deu certo, atualizamos o contador buscando do banco novamente
-        const resResumo = await axios.get('http://localhost:8080/api/dashboard/resumo');
-        setTotalPresencasBanco(resResumo.data.presentesPortaria);
-      } else if (dados.status === 'DUPLICADO') {
-        setStatsLocais(s => ({ ...s, duplicados: s.duplicados + 1 }));
-      } else {
-        setStatsLocais(s => ({ ...s, erros: s.erros + 1 }));
-      }
-
-      // Adiciona o novo item no topo da lista visualmente
-      const novoItem: HistoricoItem = {
-        hora: dados.hora || new Date().toLocaleTimeString(),
-        nome: dados.alunoNome || termo,
-        status: dados.status,
-        mensagem: dados.mensagem
-      };
-
-      setHistorico(prev => [novoItem, ...prev]);
+      // Limpa e atualiza histórico
       setTermo('');
-
-    } catch (error) {
-      console.error(error);
-      alert("Erro de conexão com o servidor.");
-    } finally {
-      setLoading(false);
-    }
+      setAlunoEncontrado(null);
+      carregarHistorico(); // Recarrega a lista do banco
+    } catch (error) { alert("Erro ao registrar entrada."); }
   };
 
+  // Filtragem do histórico (Nome ou ID)
+  const logsFiltrados = logs.filter(log => 
+    log.alunoNome.toLowerCase().includes(filtroHistorico.toLowerCase()) ||
+    log.id.toString().includes(filtroHistorico)
+  );
+
   return (
-    <div className="container" style={{ maxWidth: '1000px' }}>
+    <div className="container py-5" style={{maxWidth: '800px'}}>
       
-      {/* HEADER */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body d-flex align-items-center p-4">
-          <div className="bg-primary text-white p-3 rounded-3 me-3">
-            <Shield size={32} />
-          </div>
-          <div>
-            <h4 className="fw-bold mb-0 text-dark">Módulo da Porta</h4>
-            <span className="text-muted">Controle de entrada dos alunos na escola</span>
-          </div>
-        </div>
+      <div className="text-center mb-5">
+        <h2 className="fw-bold text-white"><UserCheck size={40} className="me-2 text-primary"/> Controle de Portaria</h2>
+        <p className="text-muted">Registro de entrada manual de alunos</p>
       </div>
 
-      {/* CARDS DE STATUS */}
-      <div className="row g-4 mb-4">
-        <div className="col-md-4">
-          <div className="card h-100 border-success border-2 bg-light shadow-sm text-center py-2">
-             <div className="card-body">
-                <CheckCircle className="text-success mb-2" size={32}/>
-                <h3 className="fw-bold text-success mb-0">{totalPresencasBanco}</h3>
-                <small className="text-muted fw-bold">Presenças hoje (Total)</small>
-             </div>
-          </div>
-        </div>
-        
-        <div className="col-md-4">
-          <div className="card h-100 border-warning border-2 bg-light shadow-sm text-center py-2">
-             <div className="card-body">
-                <AlertTriangle className="text-warning mb-2" size={32}/>
-                <h3 className="fw-bold text-warning mb-0">{statsLocais.duplicados}</h3>
-                <small className="text-muted fw-bold">Tentativas Duplicadas</small>
-             </div>
-          </div>
-        </div>
-
-        <div className="col-md-4">
-          <div className="card h-100 border-danger border-2 bg-light shadow-sm text-center py-2">
-             <div className="card-body">
-                <XCircle className="text-danger mb-2" size={32}/>
-                <h3 className="fw-bold text-danger mb-0">{statsLocais.erros}</h3>
-                <small className="text-muted fw-bold">Erros / Não encontrados</small>
-             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* INPUT */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3">
-           <h5 className="fw-bold text-secondary mb-0">Verificar Aluno</h5>
-        </div>
+      {/* CARD DE REGISTRO */}
+      <div className="card bg-dark border-secondary shadow-lg mb-5">
         <div className="card-body p-4">
-          <form onSubmit={handleVerificar}>
-            <label className="fw-bold text-dark mb-2">ID ou Nome do Aluno</label>
-            <div className="d-flex gap-2 mb-4">
+          
+          <form onSubmit={buscarAluno} className="mb-4">
+            <label className="form-label text-white">Nova Entrada</label>
+            <div className="input-group input-group-lg">
               <input 
                 type="text" 
-                className="form-control form-control-lg" 
-                placeholder="Digite o ID ou nome..." 
+                className="form-control bg-secondary border-0 text-white" 
+                placeholder="Digite Nome ou Matrícula..." 
                 value={termo}
                 onChange={e => setTermo(e.target.value)}
                 autoFocus
               />
-              <button type="submit" className="btn btn-secondary btn-lg px-4 fw-bold" disabled={loading}>
-                <Search size={20} className="me-2"/> Verificar
+              <button className="btn btn-primary px-4 fw-bold" type="submit" disabled={loading}>
+                <Search size={24}/>
               </button>
             </div>
           </form>
-          <div className="alert alert-primary border-primary bg-light-blue d-flex" role="alert">
-            <div className="me-3"><Shield size={20}/></div>
-            <div><small>Digite o ID completo (ex: 001) ou Nome e tecle Enter.</small></div>
-          </div>
+
+          {alunoEncontrado && (
+            <div className="alert alert-dark border border-primary d-flex align-items-center justify-content-between animate-fade-in">
+                <div className="d-flex align-items-center">
+                    <div className="bg-primary bg-opacity-25 p-3 rounded-circle me-3">
+                        <User size={32} className="text-white"/>
+                    </div>
+                    <div>
+                        <h4 className="fw-bold mb-0 text-white">{alunoEncontrado.nomeCompleto}</h4>
+                        <div className="text-muted">{alunoEncontrado.matricula} • {alunoEncontrado.tipoAlimentar}</div>
+                    </div>
+                </div>
+                <button className="btn btn-success btn-lg fw-bold px-4 shadow" onClick={registrarEntrada}>
+                    CONFIRMAR ENTRADA
+                </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* HISTÓRICO PERSISTENTE */}
-      <div className="card border-0 shadow-sm">
-        <div className="card-header bg-white py-3">
-          <h5 className="fw-bold text-secondary mb-0">Histórico de Hoje</h5>
+      {/* HISTÓRICO RECENTE COM BUSCA */}
+      <div className="d-flex justify-content-between align-items-end mb-3">
+        <h5 className="text-white mb-0">Histórico de Hoje</h5>
+        <div className="input-group input-group-sm" style={{maxWidth: '250px'}}>
+            <span className="input-group-text bg-dark border-secondary text-muted"><Filter size={14}/></span>
+            <input 
+                type="text" 
+                className="form-control bg-dark border-secondary text-white" 
+                placeholder="Buscar no histórico..."
+                value={filtroHistorico}
+                onChange={e => setFiltroHistorico(e.target.value)}
+            />
         </div>
-        <div className="card-body p-0">
-            {historico.length === 0 ? (
-                <div className="text-center py-4 text-muted">Nenhum registro ainda hoje.</div>
-            ) : (
-                <table className="table table-striped mb-0 align-middle">
-                  <tbody>
-                    {historico.map((item, index) => (
-                      <tr key={index}>
-                        <td className="ps-4"><Clock size={14} className="me-1"/> {item.hora}</td>
-                        <td className="fw-bold">{item.nome}</td>
-                        <td className="text-end pe-4">
-                           {item.status === 'SUCESSO' && <span className="badge bg-success">OK</span>}
-                           {item.status === 'DUPLICADO' && <span className="badge bg-warning text-dark">DUPLICADO</span>}
-                           {item.status === 'ERRO' && <span className="badge bg-danger">ERRO</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-            )}
-        </div>
+      </div>
+
+      <div className="list-group shadow-sm">
+        {logsFiltrados.length === 0 && (
+            <div className="list-group-item bg-dark text-muted fst-italic py-4 text-center border-secondary">
+                {logs.length === 0 ? "Nenhum registro hoje." : "Nenhum aluno encontrado neste filtro."}
+            </div>
+        )}
+        
+        {logsFiltrados.map((log, index) => (
+            <div key={index} className="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center p-3">
+                <div className="d-flex align-items-center">
+                    <span className="badge bg-secondary me-3 text-white-50">{log.hora}</span>
+                    <div>
+                        <strong className="d-block text-white">{log.alunoNome}</strong>
+                        <small className="text-muted" style={{fontSize: '0.75rem'}}>ID: {log.id}</small>
+                    </div>
+                </div>
+                <div>
+                    {log.status === 'EMBARCOU' || log.status === 'PRESENTE' ? (
+                        <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                            <CheckCircle size={12} className="me-1 mb-1"/> Presente
+                        </span>
+                    ) : (
+                        <span className="badge bg-danger">{log.status}</span>
+                    )}
+                </div>
+            </div>
+        ))}
       </div>
 
     </div>
