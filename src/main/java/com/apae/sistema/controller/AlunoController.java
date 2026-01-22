@@ -2,10 +2,10 @@ package com.apae.sistema.controller;
 
 import com.apae.sistema.model.Aluno;
 import com.apae.sistema.repository.AlunoRepository;
-import jakarta.transaction.Transactional; // Importante para o delete funcionar
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional; // Importante para o delete
 
 import java.util.List;
 
@@ -30,30 +30,36 @@ public class AlunoController {
     public ResponseEntity<Aluno> atualizar(@PathVariable Long id, @RequestBody Aluno dados) {
         return alunoRepository.findById(id)
                 .map(aluno -> {
+                    // Dados Pessoais Básicos
                     aluno.setNomeCompleto(dados.getNomeCompleto());
                     aluno.setMatricula(dados.getMatricula());
                     aluno.setIdade(dados.getIdade());
+                    aluno.setSexo(dados.getSexo()); // Novo campo
+
+                    // Saúde e Alimentação
                     aluno.setTipoAlimentar(dados.getTipoAlimentar());
-                    // Atualiza a parada se vier no JSON
+                    aluno.setAlergias(dados.getAlergias()); // Novo campo
+                    aluno.setDeficiencia(dados.getDeficiencia()); // Novo campo
+
+                    // Logística
+                    aluno.setEnderecoResidencial(dados.getEnderecoResidencial()); // Novo campo
+
                     if (dados.getParada() != null) {
                         aluno.setParada(dados.getParada());
                     }
+
                     return ResponseEntity.ok(alunoRepository.save(aluno));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // --- CORREÇÃO AQUI ---
     @DeleteMapping("/{id}")
-    @Transactional // Necessário para realizar operações de DELETE customizadas
+    @Transactional
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         if (alunoRepository.existsById(id)) {
-            // 1. Primeiro apaga o histórico de chamadas (para não dar erro no banco)
+            // Usa o método corrigido com sub-select que criamos no passo anterior
             alunoRepository.deletarHistoricoChamadas(id);
-
-            // 2. Depois apaga o aluno
             alunoRepository.deleteById(id);
-
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
