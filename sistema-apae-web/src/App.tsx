@@ -1,53 +1,56 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
 import { Layout } from './components/Layout';
-import { Portaria } from './pages/Portaria';
-import { Refeitorio } from './pages/Refeitorio';
+import { Dashboard } from './pages/Dashboard';
 import { Monitora } from './pages/Monitora';
-import { GestaoUsuarios } from './pages/GestaoUsuarios';
-import { GestaoAlunos } from './pages/GestaoAlunos';
-import { CadastroOnibus } from './pages/CadastroOnibus';
-import { RotaProtegida } from './components/RotaProtegida';
+import { Refeitorio } from './pages/Refeitorio';
+import { Portaria } from './pages/Portaria';
 
-function App() {
+// Páginas Administrativas
+import { GestaoAlunos } from './pages/GestaoAlunos';
+import { CadastroOnibus } from './pages/CadastroOnibus'; // Essa é a /frota
+import { GestaoUsuarios } from './pages/GestaoUsuarios';
+
+// Componente para proteger rotas (Só logado acessa)
+function RotaProtegida({ children }: { children: JSX.Element }) {
+  const usuarioLogado = localStorage.getItem('usuarioLogado');
+  return usuarioLogado ? children : <Navigate to="/" />;
+}
+
+// Componente para proteger rotas de Admin (Só Admin acessa)
+function RotaAdmin({ children }: { children: JSX.Element }) {
+  const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+  return usuarioLogado.perfil === 'ADMIN' ? children : <Navigate to="/dashboard" />;
+}
+
+export default function App() {
   return (
-    // Note: Removemos o <BrowserRouter> daqui se ele já estiver no main.tsx
-    // Mas como o erro anterior pediu para remover do main.tsx, mantenha AQUI.
     <BrowserRouter>
       <Routes>
+        {/* Login (Pública) */}
         <Route path="/" element={<Login />} />
 
+        {/* Rotas do Sistema (Com Menu Lateral) */}
         <Route element={<Layout />}>
           
-          <Route path="/dashboard" element={
-            <RotaProtegida perfisPermitidos={['ADMIN']}> <Dashboard /> </RotaProtegida>
-          } />
+          {/* Rotas Operacionais (Todos acessam) */}
+          <Route path="/dashboard" element={<RotaProtegida><Dashboard /></RotaProtegida>} />
+          <Route path="/monitora" element={<RotaProtegida><Monitora /></RotaProtegida>} />
+          <Route path="/refeitorio" element={<RotaProtegida><Refeitorio /></RotaProtegida>} />
+          <Route path="/portaria" element={<RotaProtegida><Portaria /></RotaProtegida>} />
 
-          <Route path="/portaria" element={
-            <RotaProtegida perfisPermitidos={['ADMIN', 'PORTEIRO']}> <Portaria /> </RotaProtegida>
-          } />
-
-          <Route path="/refeitorio" element={
-            <RotaProtegida perfisPermitidos={['ADMIN', 'REFEITORIO']}> <Refeitorio /> </RotaProtegida>
-          } />
-
-          <Route path="/monitora" element={
-            <RotaProtegida perfisPermitidos={['ADMIN', 'MONITOR']}> <Monitora /> </RotaProtegida>
-          } />
-
-          {/* Rota corrigida: /usuarios */}
-          <Route path="/usuarios" element={
-            <RotaProtegida perfisPermitidos={['ADMIN']}> <GestaoUsuarios /> </RotaProtegida>
-          } />
-
-          {/* NOVA ROTA ADICIONADA: /alunos */}
+          {/* Rotas Administrativas (Só Admin acessa) */}
           <Route path="/alunos" element={
-            <RotaProtegida perfisPermitidos={['ADMIN']}> <GestaoAlunos /> </RotaProtegida>
+            <RotaProtegida><RotaAdmin><GestaoAlunos /></RotaAdmin></RotaProtegida>
           } />
-
-           <Route path="/onibus" element={
-            <RotaProtegida perfisPermitidos={['ADMIN']}> <CadastroOnibus /> </RotaProtegida>
+          
+          {/* AQUI ESTÁ A CORREÇÃO DA FROTA */}
+          <Route path="/frota" element={
+            <RotaProtegida><RotaAdmin><CadastroOnibus /></RotaAdmin></RotaProtegida>
+          } />
+          
+          <Route path="/usuarios" element={
+            <RotaProtegida><RotaAdmin><GestaoUsuarios /></RotaAdmin></RotaProtegida>
           } />
 
         </Route>
@@ -55,5 +58,3 @@ function App() {
     </BrowserRouter>
   );
 }
-
-export default App;

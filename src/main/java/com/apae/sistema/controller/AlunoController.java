@@ -1,7 +1,6 @@
 package com.apae.sistema.controller;
 
 import com.apae.sistema.model.Aluno;
-import com.apae.sistema.model.ParadaOnibus;
 import com.apae.sistema.repository.AlunoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,23 +17,19 @@ public class AlunoController {
     @Autowired
     private AlunoRepository alunoRepository;
 
-    // DTO para evitar recursão infinita (StackOverflow)
+    // CORREÇÃO: Adicionei 'idade' e 'sexo' que faltavam
     public record AlunoDTO(
             Long id,
             String nomeCompleto,
             String matricula,
-            String sexo,
-            Integer idade,
+            Integer idade,    // <--- Faltava isso
+            String sexo,      // <--- E isso
             String tipoAlimentar,
-            String alergias,
-            String deficiencia,
             String enderecoResidencial,
-            ParadaResumoDTO parada
+            String nomeParada
     ) {}
 
-    public record ParadaResumoDTO(Long id, String nomeParada) {}
-
-    // 1. LISTAR (Convertendo para DTO)
+    // 1. LISTAR TODOS
     @GetMapping
     public List<AlunoDTO> listar() {
         return alunoRepository.findAll().stream()
@@ -42,7 +37,7 @@ public class AlunoController {
                 .collect(Collectors.toList());
     }
 
-    // 2. BUSCAR POR NOME/MATRÍCULA (Novo Endpoint de Busca)
+    // 2. BUSCAR POR NOME/MATRÍCULA
     @GetMapping("/buscar")
     public List<AlunoDTO> buscar(@RequestParam String termo) {
         String termoBusca = termo.toLowerCase();
@@ -70,10 +65,7 @@ public class AlunoController {
                     aluno.setAlergias(dados.getAlergias());
                     aluno.setDeficiencia(dados.getDeficiencia());
                     aluno.setEnderecoResidencial(dados.getEnderecoResidencial());
-
-                    if (dados.getParada() != null) {
-                        aluno.setParada(dados.getParada());
-                    }
+                    if (dados.getParada() != null) aluno.setParada(dados.getParada());
                     return ResponseEntity.ok(alunoRepository.save(aluno));
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -90,24 +82,19 @@ public class AlunoController {
         return ResponseEntity.notFound().build();
     }
 
-    // Método Auxiliar de Conversão
+    // CONVERSOR ATUALIZADO
     private AlunoDTO converterParaDTO(Aluno aluno) {
-        ParadaResumoDTO paradaDTO = null;
-        if (aluno.getParada() != null) {
-            paradaDTO = new ParadaResumoDTO(aluno.getParada().getId(), aluno.getParada().getNomeParada());
-        }
+        String nomeParada = (aluno.getParada() != null) ? aluno.getParada().getNomeParada() : "Sem Parada";
 
         return new AlunoDTO(
                 aluno.getId(),
                 aluno.getNomeCompleto(),
                 aluno.getMatricula(),
+                aluno.getIdade(), // <--- Mapeando a idade
                 aluno.getSexo(),
-                aluno.getIdade(),
                 aluno.getTipoAlimentar(),
-                aluno.getAlergias(),
-                aluno.getDeficiencia(),
                 aluno.getEnderecoResidencial(),
-                paradaDTO
+                nomeParada
         );
     }
 }

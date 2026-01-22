@@ -10,7 +10,7 @@ interface Aluno {
 }
 
 interface LogPortaria {
-  id: number; // ID do aluno (para busca)
+  id: number;
   alunoNome: string;
   hora: string;
   status: string;
@@ -25,7 +25,7 @@ export function Portaria() {
   const [logs, setLogs] = useState<LogPortaria[]>([]);
   const [filtroHistorico, setFiltroHistorico] = useState('');
 
-  // 1. Carrega histórico ao abrir a tela
+  // 1. Carrega histórico REAL do banco ao abrir
   useEffect(() => {
     carregarHistorico();
   }, []);
@@ -64,14 +64,13 @@ export function Portaria() {
 
       alert(`Entrada registrada: ${alunoEncontrado.nomeCompleto}`);
       
-      // Limpa e atualiza histórico
       setTermo('');
       setAlunoEncontrado(null);
-      carregarHistorico(); // Recarrega a lista do banco
+      carregarHistorico(); // Atualiza a lista na hora
     } catch (error) { alert("Erro ao registrar entrada."); }
   };
 
-  // Filtragem do histórico (Nome ou ID)
+  // Filtragem local do histórico
   const logsFiltrados = logs.filter(log => 
     log.alunoNome.toLowerCase().includes(filtroHistorico.toLowerCase()) ||
     log.id.toString().includes(filtroHistorico)
@@ -128,6 +127,8 @@ export function Portaria() {
       {/* HISTÓRICO RECENTE COM BUSCA */}
       <div className="d-flex justify-content-between align-items-end mb-3">
         <h5 className="text-white mb-0">Histórico de Hoje</h5>
+        
+        {/* CAMPO DE BUSCA NO HISTÓRICO */}
         <div className="input-group input-group-sm" style={{maxWidth: '250px'}}>
             <span className="input-group-text bg-dark border-secondary text-muted"><Filter size={14}/></span>
             <input 

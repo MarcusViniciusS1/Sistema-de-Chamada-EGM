@@ -25,8 +25,6 @@ public class ChamadaController {
     private AlunoRepository alunoRepository;
 
     public record RegistroChamadaDTO(Long alunoId, String status) {}
-
-    // DTO para o histórico da portaria
     public record HistoricoChamadaDTO(Long id, String alunoNome, String hora, String status) {}
 
     @PostMapping
@@ -41,10 +39,7 @@ public class ChamadaController {
 
         chamada.setAluno(aluno);
         chamada.setDataChamada(hoje);
-        // Só atualiza a hora se for registro novo, para não perder a hora original de chegada
-        if (chamada.getId() == null) {
-            chamada.setHoraRegistro(LocalTime.now());
-        }
+        if (chamada.getId() == null) chamada.setHoraRegistro(LocalTime.now());
 
         try {
             chamada.setStatus(StatusChamada.valueOf(dados.status()));
@@ -55,17 +50,20 @@ public class ChamadaController {
         chamadaRepository.save(chamada);
     }
 
-    // --- NOVO ENDPOINT: Histórico do Dia ---
+    // --- NOVO: Traz o histórico real do dia ---
     @GetMapping("/do-dia")
     public List<HistoricoChamadaDTO> listarDoDia() {
         LocalDate hoje = LocalDate.now();
         List<Chamada> chamadas = chamadaRepository.findAllByDataChamada(hoje);
 
         return chamadas.stream()
-                // Ordena do mais recente para o mais antigo
-                .sorted((c1, c2) -> c2.getHoraRegistro().compareTo(c1.getHoraRegistro()))
+                .sorted((c1, c2) -> {
+                    if (c1.getHoraRegistro() == null) return 1;
+                    if (c2.getHoraRegistro() == null) return -1;
+                    return c2.getHoraRegistro().compareTo(c1.getHoraRegistro());
+                })
                 .map(c -> new HistoricoChamadaDTO(
-                        c.getAluno().getId(), // Usamos o ID do aluno para facilitar a busca
+                        c.getAluno().getId(),
                         c.getAluno().getNomeCompleto(),
                         c.getHoraRegistro() != null ? c.getHoraRegistro().format(DateTimeFormatter.ofPattern("HH:mm")) : "--:--",
                         c.getStatus().name()
