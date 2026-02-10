@@ -1,6 +1,6 @@
 # 🏫 Sistema de Chamada EGM
 
-![Status do Projeto](https://img.shields.io/badge/Status-Protótipo-orange)
+![Status do Projeto](https://img.shields.io/badge/Status-Desenvolvimento-orange)
 ![Desenvolvimento](https://img.shields.io/badge/Foco-Produtividade-blue)
 ![Powered by](https://img.shields.io/badge/AI-Assisted-green)
 
@@ -34,7 +34,6 @@ Para testar as funcionalidades administrativas, utilize os dados abaixo:
 | **Login** | `adm` |
 | **Senha** | `adm123` |
 
-> **Nota:** Este é um ambiente de testes. Por favor, não insira dados reais ou sensíveis.
 
 ---
 
